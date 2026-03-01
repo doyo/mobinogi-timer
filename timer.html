@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Timer">
+<meta name="theme-color" content="#0d0f0e">
+<title>Timer</title>
+
+<!-- Inline SVG favicon -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230d0f0e'/><rect x='4' y='14' width='10' height='4' rx='2' fill='%2316a34a'/><rect x='16' y='14' width='12' height='4' rx='2' fill='%234ade80'/></svg>">
+
+<!-- PWA manifest (inline via data URI) -->
+<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Timer%22%2C%22short_name%22%3A%22Timer%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230d0f0e%22%2C%22theme_color%22%3A%22%230d0f0e%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%3Csvg+xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'+viewBox%3D'0+0+512+512'%3E%3Crect+width%3D'512'+height%3D'512'+rx%3D'80'+fill%3D'%230d0f0e'%2F%3E%3Crect+x%3D'60'+y%3D'224'+width%3D'160'+height%3D'64'+rx%3D'32'+fill%3D'%2316a34a'%2F%3E%3Crect+x%3D'260'+y%3D'224'+width%3D'192'+height%3D'64'+rx%3D'32'+fill%3D'%234ade80'%2F%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0f0e;
+    --text: #e8f5e9;
+    --muted: #4a6a52;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+    overflow: hidden;
+    position: relative;
+    /* safe area for notch/home bar */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 50% at 50% 50%, #0d2a1a 0%, #0d0f0e 70%);
+    pointer-events: none;
+  }
+
+  .title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(3rem, 8vw, 6rem);
+    letter-spacing: 0.1em;
+    color: var(--text);
+    opacity: 0.9;
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 0 40px rgba(74, 222, 128, 0.15);
+  }
+
+  .timer-container {
+    position: relative;
+    z-index: 1;
+    width: min(700px, 90vw);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* ── Status badge ── */
+  .status-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 16px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    border: 1px solid;
+    transition: color 0.4s, border-color 0.4s, background 0.4s;
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    transition: background 0.4s, box-shadow 0.4s;
+  }
+
+  .status-badge.ready   { color: #4ade80; border-color: rgba(74,222,128,0.3);  background: rgba(74,222,128,0.05); }
+  .status-badge.working { color: #93c5fd; border-color: rgba(147,197,253,0.3); background: rgba(147,197,253,0.05); }
+  .status-badge.rest    { color: #fbbf24; border-color: rgba(251,191,36,0.3);  background: rgba(251,191,36,0.05); }
+
+  .status-badge.ready   .status-dot { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+  .status-badge.working .status-dot { background: #93c5fd; box-shadow: 0 0 6px #93c5fd; animation: blink 1s ease-in-out infinite; }
+  .status-badge.rest    .status-dot { background: #fbbf24; box-shadow: 0 0 6px #fbbf24; animation: blink 1.5s ease-in-out infinite; }
+
+  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.25;} }
+
+  /* ── Bar ── */
+  .bar-wrapper {
+    display: flex;
+    align-items: stretch;
+    height: 72px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(74,222,128,0.1), 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  .segment { position: relative; overflow: hidden; }
+  .segment-20 { flex: 20; border-right: 2px solid rgba(0,0,0,0.4); }
+  .segment-70 { flex: 70; }
+
+  .seg-bg { position: absolute; inset: 0; }
+  .segment-20 .seg-bg { background: #14532d; }
+  .segment-70 .seg-bg { background: #166534; }
+
+  .seg-fill { position: absolute; inset: 0; width: 0%; }
+  .seg-fill.blue-20  { background: linear-gradient(90deg, #1e3a8a, #1d4ed8); }
+  .seg-fill.blue-70  { background: linear-gradient(90deg, #1e40af, #3b82f6); }
+  .seg-fill.amber-20 { background: linear-gradient(90deg, #78350f, #d97706); }
+  .seg-fill.amber-70 { background: linear-gradient(90deg, #92400e, #f59e0b); }
+
+  .seg-fill::after {
+    content: '';
+    position: absolute;
+    top:0; right:0; bottom:0; width: 24px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15));
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .seg-fill.active::after { opacity: 1; }
+
+  /* ── Bar labels ── */
+  .bar-labels { display:flex; width:100%; }
+  .label-20 { flex:20; display:flex; gap:8px; align-items:center; }
+  .label-70 { flex:70; display:flex; gap:8px; align-items:center; justify-content:flex-end; }
+  .label-text { font-size:11px; letter-spacing:0.15em; text-transform:uppercase; color:var(--muted); }
+  .label-time { font-size:13px; font-weight:600; color:#4ade80; }
+
+  /* ── Time display ── */
+  .time-display {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .time-main {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(5rem, 15vw, 10rem);
+    line-height: 1;
+    letter-spacing: 0.05em;
+    color: var(--text);
+    transition: color 0.4s, text-shadow 0.4s;
+    text-shadow: 0 0 60px rgba(74,222,128,0.1);
+  }
+  .time-main.working { color:#93c5fd; text-shadow:0 0 60px rgba(96,165,250,0.2); }
+  .time-main.rest    { color:#fcd34d; text-shadow:0 0 60px rgba(251,191,36,0.2); }
+
+  .time-phase {
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--muted);
+    height: 16px;
+  }
+
+  /* ── Buttons ── */
+  .btn-row {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 12px 28px;
+    border-radius: 6px;
+    border: 1px solid;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: opacity 0.25s, transform 0.15s, background 0.3s, color 0.3s, border-color 0.3s, box-shadow 0.3s;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+  }
+
+  .btn:active { transform: scale(0.96); }
+
+  .btn-key {
+    font-size: 9px;
+    padding: 1px 5px;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    opacity: 0.6;
+    letter-spacing: 0.05em;
+  }
+
+  /* START button — green */
+  .btn-start {
+    color: #4ade80;
+    border-color: rgba(74,222,128,0.4);
+    background: rgba(74,222,128,0.08);
+  }
+  .btn-start:hover { background: rgba(74,222,128,0.15); box-shadow: 0 0 16px rgba(74,222,128,0.15); }
+  .btn-start:disabled { opacity: 0.2; cursor: default; transform: none; }
+
+  /* REST button — amber */
+  .btn-rest {
+    color: #fbbf24;
+    border-color: rgba(251,191,36,0.4);
+    background: rgba(251,191,36,0.08);
+  }
+  .btn-rest:hover { background: rgba(251,191,36,0.15); box-shadow: 0 0 16px rgba(251,191,36,0.15); }
+  .btn-rest:disabled { opacity: 0.2; cursor: default; transform: none; }
+
+  /* When rest is "cancel rest" mode */
+  .btn-rest.cancel {
+    color: #f87171;
+    border-color: rgba(248,113,113,0.4);
+    background: rgba(248,113,113,0.08);
+  }
+  .btn-rest.cancel:hover { background: rgba(248,113,113,0.15); box-shadow: 0 0 16px rgba(248,113,113,0.15); }
+
+  /* ── Hint row ── */
+  .hint-row {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    gap: 28px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .hint-item {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    opacity: 0.25;
+    transition: opacity 0.4s, color 0.4s;
+    color: var(--muted);
+  }
+  .hint-item.on { opacity: 0.7; }
+  .hint-item.space.on { color: #4ade80; }
+  .hint-item.r-key.on { color: #fbbf24; }
+
+  .key-badge {
+    padding: 2px 8px;
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+  }
+
+  /* ── Flash overlay ── */
+  .flash { position:fixed; inset:0; pointer-events:none; opacity:0; z-index:100; }
+  .flash.go-green { background:rgba(74,222,128,0.07); animation:flash-anim 0.5s ease-out forwards; }
+  .flash.go-amber { background:rgba(251,191,36,0.07);  animation:flash-anim 0.5s ease-out forwards; }
+  @keyframes flash-anim { 0%{opacity:1;} 100%{opacity:0;} }
+
+  /* ── Ticks ── */
+  .tick-row { display:flex; width:100%; height:8px; position:relative; margin-top:-8px; }
+  .tick { position:absolute; top:0; width:1px; height:6px; background:rgba(74,222,128,0.2); }
+
+  /* ── PWA install banner ── */
+  #installBanner {
+    position: fixed;
+    bottom: calc(20px + env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20,40,28,0.95);
+    border: 1px solid rgba(74,222,128,0.25);
+    border-radius: 10px;
+    padding: 12px 20px;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #4ade80;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    z-index: 200;
+    backdrop-filter: blur(12px);
+    white-space: nowrap;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
+  }
+  #installBanner.show { opacity: 1; pointer-events: auto; }
+  #installBanner button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #0d0f0e;
+    background: #4ade80;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 12px;
+    cursor: pointer;
+  }
+  #installBanner .dismiss {
+    background: transparent;
+    color: var(--muted);
+    padding: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="flash" id="flash"></div>
+
+<div class="title">TIMER</div>
+
+<div class="timer-container">
+
+  <div class="status-row">
+    <div class="status-badge ready" id="statusBadge">
+      <div class="status-dot"></div>
+      <span id="statusText">READY</span>
+    </div>
+  </div>
+
+  <div class="time-display">
+    <div class="time-main" id="timeMain">1:30</div>
+    <div class="time-phase" id="timePhase">PRESS START OR SPACE</div>
+  </div>
+
+  <div class="bar-wrapper">
+    <div class="segment segment-20">
+      <div class="seg-bg"></div>
+      <div class="seg-fill blue-20" id="fill20"></div>
+    </div>
+    <div class="segment segment-70">
+      <div class="seg-bg"></div>
+      <div class="seg-fill blue-70" id="fill70"></div>
+    </div>
+  </div>
+
+  <div class="tick-row" id="tickRow"></div>
+
+  <div class="bar-labels">
+    <div class="label-20">
+      <span class="label-text">Phase 1</span>
+      <span class="label-time">20s</span>
+    </div>
+    <div class="label-70">
+      <span class="label-time">70s</span>
+      <span class="label-text">Phase 2</span>
+    </div>
+  </div>
+</div>
+
+<!-- Buttons -->
+<div class="btn-row">
+  <button class="btn btn-start" id="btnStart">
+    <span>Start</span>
+    <span class="btn-key">SPACE</span>
+  </button>
+  <button class="btn btn-rest" id="btnRest" disabled>
+    <span id="btnRestLabel">Rest</span>
+    <span class="btn-key">R</span>
+  </button>
+</div>
+
+<div class="hint-row">
+  <div class="hint-item space on" id="hintSpace">
+    <span class="key-badge">SPACE</span>
+    <span>start</span>
+  </div>
+  <div class="hint-item r-key" id="hintR">
+    <span class="key-badge">R</span>
+    <span id="hintRLabel">rest after cycle</span>
+  </div>
+</div>
+
+<!-- PWA install banner -->
+<div id="installBanner">
+  <span>Install as app</span>
+  <button id="btnInstall">Install</button>
+  <button class="dismiss" id="btnDismiss">✕</button>
+</div>
+
+<script>
+  // ── State machine ─────────────────────────────────────────────
+  // ready   --[START / SPACE]--> working
+  // working --[REST  / R]------> rest      (timer keeps running → ready on complete)
+  // rest    --[REST  / R]------> ready     (immediate reset)
+  // working --[auto complete]--> working   (loop)
+  // rest    --[auto complete]--> ready
+
+  const TOTAL = 90, PHASE1 = 20, PHASE2 = 70;
+
+  let state   = 'ready';
+  let elapsed = 0;
+  let lastTs  = null;
+  let rafId   = null;
+
+  const fill20       = document.getElementById('fill20');
+  const fill70       = document.getElementById('fill70');
+  const timeMain     = document.getElementById('timeMain');
+  const timePhase    = document.getElementById('timePhase');
+  const flashEl      = document.getElementById('flash');
+  const statusBadge  = document.getElementById('statusBadge');
+  const statusText   = document.getElementById('statusText');
+  const hintSpace    = document.getElementById('hintSpace');
+  const hintR        = document.getElementById('hintR');
+  const hintRLabel   = document.getElementById('hintRLabel');
+  const btnStart     = document.getElementById('btnStart');
+  const btnRest      = document.getElementById('btnRest');
+  const btnRestLabel = document.getElementById('btnRestLabel');
+
+  // Build ticks
+  const tickRow = document.getElementById('tickRow');
+  for (let i = 5; i < 90; i += 5) {
+    const t = document.createElement('div');
+    t.className = 'tick';
+    t.style.left = (i / 90 * 100) + '%';
+    if (i % 10 === 0) { t.style.height = '10px'; t.style.background = 'rgba(74,222,128,0.35)'; }
+    tickRow.appendChild(t);
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────
+
+  function doFlash(color) {
+    flashEl.className = 'flash';
+    void flashEl.offsetWidth;
+    flashEl.className = 'flash go-' + color;
+  }
+
+  function setFillColor(color) {
+    fill20.className = 'seg-fill ' + (color === 'blue' ? 'blue-20' : 'amber-20');
+    fill70.className = 'seg-fill ' + (color === 'blue' ? 'blue-70' : 'amber-70');
+  }
+
+  function updateUI() {
+    // Status badge
+    statusBadge.className = 'status-badge ' + state;
+    statusText.textContent = state.toUpperCase();
+
+    // Time color
+    timeMain.className = 'time-main' + (state !== 'ready' ? ' ' + state : '');
+
+    // START button: enabled only in ready
+    btnStart.disabled = (state !== 'ready');
+
+    // REST button
+    if (state === 'ready') {
+      btnRest.disabled = true;
+      btnRest.className = 'btn btn-rest';
+      btnRestLabel.textContent = 'Rest';
+    } else if (state === 'working') {
+      btnRest.disabled = false;
+      btnRest.className = 'btn btn-rest';
+      btnRestLabel.textContent = 'Rest';
+    } else { // rest
+      btnRest.disabled = false;
+      btnRest.className = 'btn btn-rest cancel';
+      btnRestLabel.textContent = 'Cancel';
+    }
+
+    // Keyboard hints
+    hintSpace.classList.toggle('on', state === 'ready');
+    hintR.classList.toggle('on', state === 'working' || state === 'rest');
+    if (state === 'rest') {
+      hintRLabel.textContent = 'cancel rest';
+      hintR.style.color = '#f87171';
+    } else {
+      hintRLabel.textContent = 'rest after cycle';
+      hintR.style.color = '';
+    }
+  }
+
+  function formatTime(e) {
+    const r = Math.ceil(Math.max(0, TOTAL - e));
+    return Math.floor(r / 60) + ':' + String(r % 60).padStart(2, '0');
+  }
+
+  function renderBar(e) {
+    const p1 = Math.min(e, PHASE1) / PHASE1;
+    fill20.style.width = (p1 * 100) + '%';
+    const p2 = e > PHASE1 ? Math.min(e - PHASE1, PHASE2) / PHASE2 : 0;
+    fill70.style.width = (p2 * 100) + '%';
+
+    fill20.classList.toggle('active', e < PHASE1 && e > 0);
+    fill70.classList.toggle('active', e >= PHASE1 && e < TOTAL);
+
+    timeMain.textContent = formatTime(e);
+
+    if (e < PHASE1) {
+      timePhase.textContent = 'PHASE 1 — ' + Math.ceil(PHASE1 - e) + 'S';
+    } else if (e < TOTAL) {
+      timePhase.textContent = 'PHASE 2 — ' + Math.ceil(TOTAL - e) + 'S';
+    }
+  }
+
+  // ── State transitions ─────────────────────────────────────────
+
+  function goReady() {
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    state = 'ready'; elapsed = 0; lastTs = null;
+
+    fill20.style.width = '0%'; fill70.style.width = '0%';
+    fill20.classList.remove('active'); fill70.classList.remove('active');
+    setFillColor('blue');
+
+    timeMain.textContent  = '1:30';
+    timePhase.textContent = 'PRESS START OR SPACE';
+
+    updateUI();
+    doFlash('green');
+    resetBeeps();
+  }
+
+  function startTicking(fillColor) {
+    setFillColor(fillColor);
+    elapsed = 0; lastTs = null;
+    resetBeeps();
+    renderBar(0);
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function goWorking() {
+    state = 'working';
+    updateUI();
+    doFlash('green');
+    startTicking('blue');
+  }
+
+  function goRest() {
+    state = 'rest';
+    setFillColor('amber');
+    updateUI();
+    doFlash('amber');
+    // tick keeps running
+  }
+
+  function handleRestBtn() {
+    if (state === 'working') goRest();
+    else if (state === 'rest') goReady();
+  }
+
+  function onCycleComplete() {
+    fill20.classList.remove('active');
+    fill70.classList.remove('active');
+    const nextState = state;
+    setTimeout(() => {
+      if (nextState === 'rest') goReady();
+      else goWorking();
+    }, 200);
+  }
+
+  // ── Tick ──────────────────────────────────────────────────────
+
+  function tick(ts) {
+    if (state === 'ready') return;
+    if (lastTs === null) lastTs = ts;
+    const dt = (ts - lastTs) / 1000;
+    lastTs = ts;
+    elapsed = Math.min(elapsed + dt, TOTAL);
+
+    renderBar(elapsed);
+    checkBeeps(elapsed);
+
+    if (elapsed >= TOTAL) { onCycleComplete(); return; }
+    rafId = requestAnimationFrame(tick);
+  }
+
+  // ── Audio ─────────────────────────────────────────────────────
+
+  let audioCtx = null;
+
+  function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+
+  function beep(freq, duration, volume = 0.4) {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(volume, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration);
+  }
+
+  const BEEP_TIMES = [16, 17, 18, 19, 20, 86, 87, 88, 89, 90];
+  let firedBeeps = new Set();
+
+  function checkBeeps(e) {
+    for (const bt of BEEP_TIMES) {
+      if (!firedBeeps.has(bt) && e >= bt) {
+        firedBeeps.add(bt);
+        const isLast = (bt === 20 || bt === 90);
+        beep(isLast ? 880 : 660, isLast ? 0.45 : 0.12, isLast ? 0.5 : 0.35);
+      }
+    }
+  }
+
+  function resetBeeps() { firedBeeps = new Set(); }
+
+  // ── Input ─────────────────────────────────────────────────────
+
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (state === 'ready') goWorking();
+    }
+    if (e.key === 'r' || e.key === 'R') {
+      handleRestBtn();
+    }
+  });
+
+  btnStart.addEventListener('click', () => { if (state === 'ready') goWorking(); });
+  btnRest.addEventListener('click',  () => handleRestBtn());
+
+  // ── PWA / Install ──────────────────────────────────────────────
+
+  let deferredPrompt = null;
+  const installBanner = document.getElementById('installBanner');
+  const btnInstall    = document.getElementById('btnInstall');
+  const btnDismiss    = document.getElementById('btnDismiss');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBanner.classList.add('show');
+  });
+
+  btnInstall.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    installBanner.classList.remove('show');
+  });
+
+  btnDismiss.addEventListener('click', () => {
+    installBanner.classList.remove('show');
+  });
+
+  // Register service worker for offline/standalone support
+  if ('serviceWorker' in navigator) {
+    // Inline SW via blob URL — caches this page for offline use
+    const swCode = `
+      const CACHE = 'timer-v1';
+      const ASSETS = [self.location.href.replace('/sw.js','')];
+      self.addEventListener('install', e => {
+        e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+        self.skipWaiting();
+      });
+      self.addEventListener('activate', e => {
+        e.waitUntil(clients.claim());
+      });
+      self.addEventListener('fetch', e => {
+        e.respondWith(
+          caches.match(e.request).then(r => r || fetch(e.request))
+        );
+      });
+    `;
+    const swBlob = new Blob([swCode], { type: 'application/javascript' });
+    const swUrl  = URL.createObjectURL(swBlob);
+    navigator.serviceWorker.register(swUrl).catch(() => {});
+  }
+
+  // ── Init ──────────────────────────────────────────────────────
+  state = 'ready';
+  updateUI();
+</script>
+</body>
+</html>
