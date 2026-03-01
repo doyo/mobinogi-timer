@@ -1,0 +1,15 @@
+{
+  "name": "Mobinogi Timer",
+  "short_name": "Timer",
+  "start_url": "./timer.html",
+  "display": "standalone",
+  "background_color": "#0d0f0e",
+  "theme_color": "#0d0f0e",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

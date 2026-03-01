@@ -9,11 +9,8 @@
 <meta name="theme-color" content="#0d0f0e">
 <title>Timer</title>
 
-<!-- Inline SVG favicon -->
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230d0f0e'/><rect x='4' y='14' width='10' height='4' rx='2' fill='%2316a34a'/><rect x='16' y='14' width='12' height='4' rx='2' fill='%234ade80'/></svg>">
-
-<!-- PWA manifest (inline via data URI) -->
-<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Timer%22%2C%22short_name%22%3A%22Timer%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230d0f0e%22%2C%22theme_color%22%3A%22%230d0f0e%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%3Csvg+xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'+viewBox%3D'0+0+512+512'%3E%3Crect+width%3D'512'+height%3D'512'+rx%3D'80'+fill%3D'%230d0f0e'%2F%3E%3Crect+x%3D'60'+y%3D'224'+width%3D'160'+height%3D'64'+rx%3D'32'+fill%3D'%2316a34a'%2F%3E%3Crect+x%3D'260'+y%3D'224'+width%3D'192'+height%3D'64'+rx%3D'32'+fill%3D'%234ade80'%2F%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+<link rel="icon" href="./icon.svg">
+<link rel="manifest" href="./manifest.json">
 
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;600&display=swap');
@@ -674,26 +671,7 @@
 
   // Register service worker for offline/standalone support
   if ('serviceWorker' in navigator) {
-    // Inline SW via blob URL — caches this page for offline use
-    const swCode = `
-      const CACHE = 'timer-v1';
-      const ASSETS = [self.location.href.replace('/sw.js','')];
-      self.addEventListener('install', e => {
-        e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
-        self.skipWaiting();
-      });
-      self.addEventListener('activate', e => {
-        e.waitUntil(clients.claim());
-      });
-      self.addEventListener('fetch', e => {
-        e.respondWith(
-          caches.match(e.request).then(r => r || fetch(e.request))
-        );
-      });
-    `;
-    const swBlob = new Blob([swCode], { type: 'application/javascript' });
-    const swUrl  = URL.createObjectURL(swBlob);
-    navigator.serviceWorker.register(swUrl).catch(() => {});
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
 
   // ── Init ──────────────────────────────────────────────────────
