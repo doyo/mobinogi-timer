@@ -294,50 +294,6 @@
   .tick-row { display:flex; width:100%; height:8px; position:relative; margin-top:-8px; }
   .tick { position:absolute; top:0; width:1px; height:6px; background:rgba(74,222,128,0.2); }
 
-  /* ── PWA install banner ── */
-  #installBanner {
-    position: fixed;
-    bottom: calc(20px + env(safe-area-inset-bottom));
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(20,40,28,0.95);
-    border: 1px solid rgba(74,222,128,0.25);
-    border-radius: 10px;
-    padding: 12px 20px;
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: #4ade80;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    z-index: 200;
-    backdrop-filter: blur(12px);
-    white-space: nowrap;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.4s;
-  }
-  #installBanner.show { opacity: 1; pointer-events: auto; }
-  #installBanner button {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: #0d0f0e;
-    background: #4ade80;
-    border: none;
-    border-radius: 4px;
-    padding: 5px 12px;
-    cursor: pointer;
-  }
-  #installBanner .dismiss {
-    background: transparent;
-    color: var(--muted);
-    padding: 4px;
-  }
 </style>
 </head>
 <body>
@@ -408,12 +364,6 @@
   </div>
 </div>
 
-<!-- PWA install banner -->
-<div id="installBanner">
-  <span>Install as app</span>
-  <button id="btnInstall">Install</button>
-  <button class="dismiss" id="btnDismiss">✕</button>
-</div>
 
 <script>
   // ── State machine ─────────────────────────────────────────────
@@ -653,30 +603,6 @@
   btnStart.addEventListener('click', () => { if (state === 'ready') goWorking(); });
   btnRest.addEventListener('click',  () => handleRestBtn());
 
-  // ── PWA / Install ──────────────────────────────────────────────
-
-  let deferredPrompt = null;
-  const installBanner = document.getElementById('installBanner');
-  const btnInstall    = document.getElementById('btnInstall');
-  const btnDismiss    = document.getElementById('btnDismiss');
-
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    installBanner.classList.add('show');
-  });
-
-  btnInstall.addEventListener('click', async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    deferredPrompt = null;
-    installBanner.classList.remove('show');
-  });
-
-  btnDismiss.addEventListener('click', () => {
-    installBanner.classList.remove('show');
-  });
 
   // Register service worker for offline/standalone support
   if ('serviceWorker' in navigator) {
