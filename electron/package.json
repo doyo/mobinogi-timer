@@ -1,0 +1,39 @@
+{
+  "name": "mobinogi-timer",
+  "version": "1.0.0",
+  "description": "모비노기 타이머",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build": "electron-builder --mac --win"
+  },
+  "build": {
+    "appId": "io.github.doyo.mobinogi-timer",
+    "productName": "Mobinogi Timer",
+    "files": [
+      "main.js",
+      { "from": "../", "to": ".", "filter": ["timer.html", "icon.svg"] }
+    ],
+    "mac": {
+      "target": "dmg",
+      "icon": "../icon.icns"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "../icon.ico"
+    },
+    "dmg": {
+      "title": "Mobinogi Timer"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    }
+  },
+  "devDependencies": {
+    "electron": "^34.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}
