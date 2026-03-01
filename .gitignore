@@ -1,3 +1,6 @@
 .claude/
 electron/node_modules/
 electron/dist/
+icons/node_modules/
+icons/package.json
+icons/package-lock.json

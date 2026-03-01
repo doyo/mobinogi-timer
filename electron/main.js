@@ -16,10 +16,10 @@ function createWindow() {
     }
   });
 
-  // dev: timer.html is at ../timer.html, packaged: same dir as main.js
+  // dev: index.html is at ../web/index.html, packaged: same dir as main.js
   const htmlPath = app.isPackaged
-    ? path.join(__dirname, 'timer.html')
-    : path.join(__dirname, '../timer.html');
+    ? path.join(__dirname, 'index.html')
+    : path.join(__dirname, '../web/index.html');
 
   win.loadFile(htmlPath);
 }

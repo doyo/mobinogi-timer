@@ -14,15 +14,15 @@
     "productName": "Mobinogi Timer",
     "files": [
       "main.js",
-      { "from": "../", "to": ".", "filter": ["timer.html", "icon.svg"] }
+      { "from": "../web/", "to": ".", "filter": ["index.html", "icon.svg"] }
     ],
     "mac": {
       "target": "dmg",
-      "icon": "../icon.icns"
+      "icon": "../icons/icon.icns"
     },
     "win": {
       "target": "nsis",
-      "icon": "../icon.ico"
+      "icon": "../icons/icon.ico"
     },
     "dmg": {
       "title": "Mobinogi Timer"
