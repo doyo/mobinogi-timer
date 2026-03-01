@@ -43,9 +43,10 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 40px;
-    overflow: hidden;
+    justify-content: safe center;
+    gap: clamp(4px, 3dvh, 40px);
+    overflow-y: auto;
+    overflow-x: hidden;
     position: relative;
     /* safe area for notch/home bar */
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
@@ -78,7 +79,7 @@
     width: min(700px, 90vw);
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: clamp(8px, 2.5dvh, 24px);
   }
 
   /* ── Status badge ── */
@@ -122,7 +123,7 @@
   .bar-wrapper {
     display: flex;
     align-items: stretch;
-    height: 72px;
+    height: clamp(36px, 7dvh, 72px);
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 0 0 1px rgba(74,222,128,0.1), 0 8px 32px rgba(0,0,0,0.4);
@@ -153,8 +154,8 @@
 
   /* ── Bar labels ── */
   .bar-labels { display:flex; width:100%; }
-  .label-20 { flex:20; display:flex; gap:8px; align-items:center; }
-  .label-70 { flex:70; display:flex; gap:8px; align-items:center; justify-content:flex-end; }
+  .label-20 { flex:20; display:flex; gap:8px; align-items:center; white-space:nowrap; overflow:hidden; }
+  .label-70 { flex:70; display:flex; gap:8px; align-items:center; justify-content:flex-end; white-space:nowrap; overflow:hidden; }
   .label-text { font-size:11px; letter-spacing:0.15em; text-transform:uppercase; color:var(--muted); }
   .label-time { font-size:13px; font-weight:600; color:#4ade80; }
 
@@ -278,6 +279,53 @@
   .hint-item.space.on { color: #4ade80; }
   .hint-item.r-key.on { color: #fbbf24; }
 
+  /* ── Blind mode ── */
+  .blind-row {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .blind-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .blind-opts { display: flex; gap: 4px; }
+
+  .blind-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid rgba(74,222,128,0.15);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+    -webkit-app-region: no-drag;
+  }
+  .blind-btn:hover:not(:disabled) { border-color: rgba(74,222,128,0.3); color: #4ade80; }
+  .blind-btn.active {
+    color: #4ade80;
+    border-color: rgba(74,222,128,0.4);
+    background: rgba(74,222,128,0.08);
+  }
+  .blind-btn:disabled { opacity: 0.2; cursor: default; }
+  .blind-btn.active:disabled { opacity: 0.65; }
+
+  @media (max-height: 500px) {
+    .title { display: none; }
+  }
+
   .key-badge {
     padding: 2px 8px;
     border: 1px solid currentColor;
@@ -334,12 +382,22 @@
   <div class="bar-labels">
     <div class="label-20">
       <span class="label-text">Phase 1</span>
-      <span class="label-time">20s</span>
+      <span class="label-time" id="labelTime1">20s</span>
     </div>
     <div class="label-70">
-      <span class="label-time">70s</span>
+      <span class="label-time" id="labelTime2">70s</span>
       <span class="label-text">Phase 2</span>
     </div>
+  </div>
+</div>
+
+<div class="blind-row">
+  <span class="blind-label">눈먼</span>
+  <div class="blind-opts">
+    <button class="blind-btn active" data-mode="none">없음</button>
+    <button class="blind-btn" data-mode="default">기본</button>
+    <button class="blind-btn" data-mode="+1">1초월</button>
+    <button class="blind-btn" data-mode="+2">2초월</button>
   </div>
 </div>
 
@@ -375,7 +433,15 @@
   // working --[auto complete]--> working   (loop)
   // rest    --[auto complete]--> ready
 
-  const TOTAL = 90, PHASE1 = 20, PHASE2 = 70;
+  const PHASE1 = 20;
+  const BLIND_SETTINGS = {
+    'none':    { total: 90, phase2: 70 },
+    'default': { total: 52, phase2: 32 },
+    '+1':      { total: 51, phase2: 31 },
+    '+2':      { total: 50, phase2: 30 },
+  };
+  let blindMode = 'none';
+  let TOTAL = 90, PHASE2 = 70;
 
   let state   = 'ready';
   let elapsed = 0;
@@ -395,6 +461,9 @@
   const btnStart     = document.getElementById('btnStart');
   const btnRest      = document.getElementById('btnRest');
   const btnRestLabel = document.getElementById('btnRestLabel');
+  const labelTime1   = document.getElementById('labelTime1');
+  const labelTime2   = document.getElementById('labelTime2');
+  const blindBtns    = document.querySelectorAll('.blind-btn');
 
   // Build ticks
   const tickRow = document.getElementById('tickRow');
@@ -455,6 +524,9 @@
       hintRLabel.textContent = 'rest after cycle';
       hintR.style.color = '';
     }
+
+    // Blind mode buttons: only enabled in ready
+    blindBtns.forEach(btn => { btn.disabled = (state !== 'ready'); });
   }
 
   function formatTime(e) {
@@ -490,7 +562,7 @@
     fill20.classList.remove('active'); fill70.classList.remove('active');
     setFillColor('blue');
 
-    timeMain.textContent  = '1:30';
+    timeMain.textContent  = formatTime(0);
     timePhase.textContent = 'PRESS START OR SPACE';
 
     updateUI();
@@ -575,14 +647,15 @@
     osc.stop(ctx.currentTime + duration);
   }
 
-  const BEEP_TIMES = [16, 17, 18, 19, 20, 86, 87, 88, 89, 90];
   let firedBeeps = new Set();
 
   function checkBeeps(e) {
-    for (const bt of BEEP_TIMES) {
+    const end = TOTAL;
+    const times = [16, 17, 18, 19, 20, end-4, end-3, end-2, end-1, end];
+    for (const bt of times) {
       if (!firedBeeps.has(bt) && e >= bt) {
         firedBeeps.add(bt);
-        const isLast = (bt === 20 || bt === 90);
+        const isLast = (bt === 20 || bt === end);
         beep(isLast ? 880 : 660, isLast ? 0.45 : 0.12, isLast ? 0.5 : 0.35);
       }
     }
@@ -604,6 +677,22 @@
 
   btnStart.addEventListener('click', () => { if (state === 'ready') goWorking(); });
   btnRest.addEventListener('click',  () => handleRestBtn());
+
+  // ── Blind mode ────────────────────────────────────────────────
+
+  function setBlindMode(mode) {
+    if (state !== 'ready') return;
+    blindMode = mode;
+    TOTAL  = BLIND_SETTINGS[mode].total;
+    PHASE2 = BLIND_SETTINGS[mode].phase2;
+    blindBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode));
+    labelTime2.textContent = PHASE2 + 's';
+    timeMain.textContent = formatTime(0);
+  }
+
+  blindBtns.forEach(btn => {
+    btn.addEventListener('click', () => setBlindMode(btn.dataset.mode));
+  });
 
 
   // Register service worker for offline/standalone support

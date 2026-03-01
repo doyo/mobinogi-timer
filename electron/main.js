@@ -7,6 +7,8 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 780,
     height: 600,
+    minWidth: 320,
+    minHeight: 340,
     alwaysOnTop: true,
     autoHideMenuBar: true,
     titleBarStyle: isMac ? 'hiddenInset' : 'default',
@@ -22,6 +24,14 @@ function createWindow() {
     : path.join(__dirname, '../web/index.html');
 
   win.loadFile(htmlPath);
+
+  // Inject drag region so the window can be moved (titlebar is hidden)
+  win.webContents.on('did-finish-load', () => {
+    win.webContents.insertCSS(`
+      body { -webkit-app-region: drag; }
+      button, input, a, select { -webkit-app-region: no-drag; }
+    `);
+  });
 }
 
 app.whenReady().then(() => {
